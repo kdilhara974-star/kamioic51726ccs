@@ -31,6 +31,10 @@ function toSeconds(time) {
   return p.length === 2 ? p[0]*60 + p[1] : parseInt(time);
 }
 
+// Ensure temp folder exists
+const tempDir = path.join(__dirname, "../temp");
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+
 cmd({
   pattern: "csong",
   alias: ["chsong", "channelplay"],
@@ -76,7 +80,7 @@ cmd({
     }
 
     // Download audio to temp
-    const tempPath = path.join(__dirname, `../temp/${Date.now()}.mp3`);
+    const tempPath = path.join(tempDir, `song_${Date.now()}.mp3`);
     if (typeof dlUrl === "string") {
       const audioRes = await fetch(dlUrl);
       const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
