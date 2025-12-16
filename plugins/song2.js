@@ -47,9 +47,7 @@ cmd(
         const quoted =
           mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         if (quoted) {
-          q =
-            quoted.conversation ||
-            quoted.extendedTextMessage?.text;
+          q = quoted.conversation || quoted.extendedTextMessage?.text;
         }
       }
 
@@ -58,19 +56,34 @@ cmd(
           "⚠️ Please provide a song name or YouTube link (or reply to a message)."
         );
 
-      // 🔍 Search YouTube
-      const search = await yts(q);
-      if (!search.videos?.length)
-        return reply("❌ The song could not be found.");
+      let video;
 
-      const video = search.videos[0];
+      // 🔹 Check if input is YouTube URL (including Shorts)
+      const ytRegex =
+        /(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=|shorts\/)?([a-zA-Z0-9_-]{11,})/;
+      const match = q.match(ytRegex);
 
-      // 🌐 API
+      if (match) {
+        const videoId = match[5];
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const search = await yts(videoUrl);
+        if (!search.videos?.length)
+          return reply("❌ The song could not be found.");
+        video = search.videos[0];
+      } else {
+        // Normal search
+        const search = await yts(q);
+        if (!search.videos?.length)
+          return reply("❌ The song could not be found.");
+        video = search.videos[0];
+      }
+
+      // 🌐 API call
       const apiUrl = `https://gtech-api-xtp1.onrender.com/api/audio/yt?apikey=APIKEY&url=${encodeURIComponent(
         video.url
       )}`;
-
       const { data } = await axios.get(apiUrl);
+
       if (!data?.status || !data?.result?.media?.audio_url)
         return reply("❌ Song download karanna bari una.");
 
@@ -144,7 +157,7 @@ cmd(
             { quoted: mek }
           );
 
-        // 2️⃣ Document
+          // 2️⃣ Document
         } else if (choice === "2") {
           await conn.sendMessage(
             from,
@@ -156,12 +169,9 @@ cmd(
             { quoted: mek }
           );
 
-        // 3️⃣ Voice note
+          // 3️⃣ Voice note
         } else if (choice === "3") {
-          const audioRes = await axios.get(audioUrl, {
-            responseType: "arraybuffer",
-          });
-
+          const audioRes = await axios.get(audioUrl, { responseType: "arraybuffer" });
           fs.writeFileSync(tempMp3, audioRes.data);
 
           await new Promise((res, rej) => {
