@@ -53,9 +53,10 @@ cmd(
 
       let video;
 
-      // 🔹 Check if YouTube link
-      if (/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/.test(q)) {
-        // Direct YouTube link
+      // 🔹 Check if q is YouTube link
+      const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+      if (ytRegex.test(q)) {
+        // Use yt-search to get video info
         const search = await yts(q);
         if (!search.videos.length) return reply("❌ Video not found.");
         video = search.videos[0];
@@ -66,7 +67,8 @@ cmd(
         video = search.videos[0];
       }
 
-      const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/song?search=${encodeURIComponent(video.url)}`;
+      // Use video title as query to API
+      const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/song?search=${encodeURIComponent(video.title)}`;
       const { data } = await axios.get(apiUrl);
 
       if (!data?.status || !data?.data?.url) return reply("❌ Song download karanna bari una.");
@@ -107,9 +109,9 @@ cmd(
           const tempMp3 = path.join(tempDir, `${Date.now()}.mp3`);
           const tempOpus = path.join(tempDir, `${Date.now()}.opus`);
 
-          // ⬇️ Download
+          // ⬇️ Download react
           await conn.sendMessage(from, { react: { text: "⬇️", key: mekInfo.key } });
-          // ⬆️ Upload
+          // ⬆️ Upload react
           await conn.sendMessage(from, { react: { text: "⬆️", key: mekInfo.key } });
 
           if (choice === "1") {
