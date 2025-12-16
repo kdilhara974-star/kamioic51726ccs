@@ -1,0 +1,171 @@
+const { cmd } = require("../command");
+const yts = require("yt-search");
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const ffmpeg = require("fluent-ffmpeg");
+
+// Fake vCard
+const fakevCard = {
+  key: {
+    fromMe: false,
+    participant: "0@s.whatsapp.net",
+    remoteJid: "status@broadcast",
+  },
+  message: {
+    contactMessage: {
+      displayName: "© Mr Hiruka",
+      vcard: `BEGIN:VCARD
+VERSION:3.0
+FN:Meta
+ORG:META AI;
+TEL;type=CELL;type=VOICE;waid=94762095304:+94762095304
+END:VCARD`,
+    },
+  },
+};
+
+cmd(
+  {
+    pattern: "song3",
+    alias: ["play3"],
+    react: "🎵",
+    desc: "Download YouTube Song",
+    category: "download",
+    use: ".song4 <song name>",
+    filename: __filename,
+  },
+
+  async (conn, mek, m, { from, reply, q }) => {
+    try {
+      if (!q) return reply("❓ Song name ekak hari YouTube link ekak hari denna.");
+
+      const search = await yts(q);
+      if (!search.videos.length) return reply("❌ Song ekak hoyaganna bari una.");
+
+      const video = search.videos[0];
+      const ytUrl = video.url;
+
+      const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/song?search=${encodeURIComponent(
+        ytUrl
+      )}`;
+      const { data } = await axios.get(apiUrl);
+
+      if (!data?.status || !data?.data?.url) {
+        return reply("❌ Song download karanna bari una.");
+      }
+
+      const audioUrl = data.data.url;
+
+      const caption = `
+🎶 *RANUMITHA-X-MD SONG DOWNLOADER* 🎶
+
+📑 *Title:* ${video.title}
+⏱ *Duration:* ${video.timestamp}
+📆 *Uploaded:* ${video.ago}
+👁 *Views:* ${video.views}
+🔗 *Url:* ${video.url}
+
+🔽 *Reply with your choice:*
+
+1️⃣ *Audio Type* 🎵
+2️⃣ *Document Type* 📁
+3️⃣ *Voice Note Type* 🎤
+
+> © Powered by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
+
+      const sentMsg = await conn.sendMessage(
+        from,
+        { image: { url: video.thumbnail }, caption },
+        { quoted: fakevCard }
+      );
+
+      const messageID = sentMsg.key.id;
+
+      conn.ev.on("messages.upsert", async (msgUpdate) => {
+        try {
+          const mekInfo = msgUpdate.messages[0];
+          if (!mekInfo?.message) return;
+
+          const text =
+            mekInfo.message.conversation ||
+            mekInfo.message.extendedTextMessage?.text;
+
+          const isReply =
+            mekInfo.message?.extendedTextMessage?.contextInfo?.stanzaId ===
+            messageID;
+
+          if (!isReply) return;
+
+          const choice = text.trim();
+
+          // ⬇️ Download
+          await conn.sendMessage(from, {
+            react: { text: "⬇️", key: mekInfo.key },
+          });
+
+          const safeTitle = video.title.replace(/[\\/:*?"<>|]/g, "").slice(0, 80);
+          const tempMp3 = path.join(__dirname, `../temp/${Date.now()}.mp3`);
+          const tempOpus = path.join(__dirname, `../temp/${Date.now()}.opus`);
+
+          // ⬆️ Upload
+          await conn.sendMessage(from, {
+            react: { text: "⬆️", key: mekInfo.key },
+          });
+
+          if (choice === "1") {
+            await conn.sendMessage(from, {
+              audio: { url: audioUrl },
+              mimetype: "audio/mpeg",
+              fileName: `${safeTitle}.mp3`,
+            }, { quoted: mek });
+
+          } else if (choice === "2") {
+            await conn.sendMessage(from, {
+              document: { url: audioUrl },
+              mimetype: "audio/mpeg",
+              fileName: `${safeTitle}.mp3`,
+            }, { quoted: mek });
+
+          } else if (choice === "3") {
+            const res = await axios.get(audioUrl, { responseType: "arraybuffer" });
+            fs.writeFileSync(tempMp3, res.data);
+
+            await new Promise((resolve, reject) => {
+              ffmpeg(tempMp3)
+                .audioCodec("libopus")
+                .format("opus")
+                .audioBitrate("64k")
+                .save(tempOpus)
+                .on("end", resolve)
+                .on("error", reject);
+            });
+
+            const voice = fs.readFileSync(tempOpus);
+
+            await conn.sendMessage(from, {
+              audio: voice,
+              mimetype: "audio/ogg; codecs=opus",
+              ptt: true,
+            }, { quoted: mek });
+
+            fs.unlinkSync(tempMp3);
+            fs.unlinkSync(tempOpus);
+          } else {
+            return reply("*❌ Invalid choice!*");
+          }
+
+          // ✔️ Done
+          await conn.sendMessage(from, {
+            react: { text: "✔️", key: mekInfo.key },
+          });
+        } catch (e) {
+          console.error("song4 reply error:", e);
+        }
+      });
+    } catch (err) {
+      console.error("song cmd error:", err);
+      reply("*Error*");
+    }
+  }
+);
