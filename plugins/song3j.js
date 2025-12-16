@@ -26,8 +26,8 @@ END:VCARD`,
 };
 
 cmd({
-  pattern: "song2",
-  alias: ["play2"],
+  pattern: "song3",
+  alias: ["play3"],
   react: "🎵",
   desc: "YouTube Song Downloader (Audio/Document/Voice Note)",
   category: "download",
