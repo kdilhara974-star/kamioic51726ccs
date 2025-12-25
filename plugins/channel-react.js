@@ -3,61 +3,35 @@ const { cmd } = require("../command");
 cmd({
   pattern: "creact",
   react: "📢",
-  desc: "React to channel message using link",
+  desc: "React multiple emojis to channel message (reply only)",
   category: "channel",
-  use: ".creact <channel_link>,💚",
+  use: "Reply channel msg + .creact 💚,❤️",
   filename: __filename
-}, async (conn, mek, m, { from, q, reply }) => {
+}, async (conn, mek, m, { q, reply }) => {
   try {
-    if (!q) {
-      return reply(
-        "❌ Use:\n.creact https://whatsapp.com/channel/XXXX/MSGID,💚"
-      );
-    }
+    if (!m.quoted)
+      return reply("❌ Channel message ekakata reply karala command eka yawanna");
 
-    // split link & emojis
-    const parts = q.split(",");
-    if (parts.length < 2) {
-      return reply("❌ Link eka saha emoji eka denna");
-    }
+    if (!q)
+      return reply("❌ Emoji denna\nExample: .creact 💚,❤️");
 
-    const link = parts.shift().trim();
-    const emojis = parts.map(e => e.trim()).filter(Boolean);
+    const emojis = q.split(",").map(e => e.trim()).filter(Boolean);
+    if (!emojis.length) return reply("❌ Emoji list empty");
 
-    // extract channel id & message id
-    const match = link.match(
-      /whatsapp\.com\/channel\/([A-Za-z0-9]+)\/([0-9]+)/
-    );
-
-    if (!match) return reply("❌ Invalid channel link");
-
-    const channelId = match[1];
-    const messageId = match[2];
-
-    const channelJid = `${channelId}@newsletter`;
-
-    const key = {
-      remoteJid: channelJid,
-      id: messageId,
-      fromMe: false
-    };
-
-    // send reactions
     for (const emoji of emojis) {
-      await conn.sendMessage(channelJid, {
+      await conn.sendMessage(m.quoted.key.remoteJid, {
         react: {
           text: emoji,
-          key
+          key: m.quoted.key
         }
       });
-
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 500));
     }
 
-    reply(`✅ React sent: ${emojis.join(" ")}`);
+    reply(`✅ Reacted: ${emojis.join(" ")}`);
 
-  } catch (err) {
-    console.error(err);
-    reply("❌ Channel react failed");
+  } catch (e) {
+    console.error(e);
+    reply("❌ React failed");
   }
 });
