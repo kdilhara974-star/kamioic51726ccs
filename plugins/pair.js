@@ -4,7 +4,7 @@ const axios = require('axios');
 cmd({
     pattern: "pair",
     alias: ["getpair", "clonebot"],
-    react: "✅",
+    react: "👾",
     desc: "Get pairing code for RANUMITHA-X-MD bot",
     category: "download",
     use: ".pair 9477xxxxxx",
