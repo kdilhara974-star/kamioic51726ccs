@@ -14,7 +14,7 @@ cmd({
         // If no number provided
         if (!q) {
             return await reply(
-                "❌ *Phone number not found!*\n\n" +
+                "⛔ *Phone number not found!*\n\n" +
                 "📌 *Example:*\n" +
                 ".pair 9477xxxxxx\n" +
                 ".pair +9477xxxxxx"
