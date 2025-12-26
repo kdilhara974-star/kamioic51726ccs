@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const { cmd } = require('../command');
+const { cmd, commands } = require('../command');
 
 // 🔐 API KEY (hidden)
 const BOT_API_KEY = "add api key from asitha.top";
