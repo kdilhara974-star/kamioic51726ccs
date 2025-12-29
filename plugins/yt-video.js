@@ -2,9 +2,7 @@ const axios = require("axios");
 const yts = require("yt-search");
 const { cmd } = require("../command");
 
-const replyCache = new Map();
-
-// Fake vCard
+// ================= FAKE VCARD =================
 const fakevCard = {
     key: {
         fromMe: false,
@@ -24,6 +22,10 @@ END:VCARD`
     }
 };
 
+// ================= REPLY CACHE =================
+const pendingReplies = new Map();
+
+// ================= COMMAND =================
 cmd({
     pattern: "video",
     alias: "ytvideo",
@@ -35,20 +37,23 @@ cmd({
 }, async (conn, mek, m, { from, reply, q }) => {
     try {
         let query = q?.trim();
+
         if (!query && m?.quoted) {
             query =
                 m.quoted.message?.conversation ||
                 m.quoted.message?.extendedTextMessage?.text;
         }
-        if (!query) return reply("⚠️ Give a video name or link");
 
+        if (!query) return reply("⚠️ Video name or link ekak denna");
+
+        // Shorts → normal
         if (query.includes("youtube.com/shorts/")) {
             const id = query.split("/shorts/")[1].split(/[?&]/)[0];
             query = `https://www.youtube.com/watch?v=${id}`;
         }
 
         const search = await yts(query);
-        if (!search.videos.length) return reply("❌ No results");
+        if (!search.videos.length) return reply("❌ No results found");
 
         const data = search.videos[0];
 
@@ -59,29 +64,43 @@ cmd({
             "720p": `https://api.nekolabs.my.id/downloader/youtube/v1?url=${data.url}&format=720`
         };
 
-        const caption = `🎬 *${data.title}*
+        const caption = `
+🎬 *RANUMITHA-X-MD VIDEO*
 
-Reply:
-1.1–1.4 ▶ Video
-2.1–2.4 ▶ Document`;
+📌 *${data.title}*
+⏱ ${data.timestamp}
+👁 ${data.views}
+
+Reply with:
+
+1.1 – 240p Video
+1.2 – 360p Video
+1.3 – 480p Video
+1.4 – 720p Video
+
+2.1 – 240p Document
+2.2 – 360p Document
+2.3 – 480p Document
+2.4 – 720p Document
+`;
 
         const sent = await conn.sendMessage(from, {
             image: { url: data.thumbnail },
             caption
         }, { quoted: fakevCard });
 
-        replyCache.set(sent.key.id, {
+        pendingReplies.set(sent.key.id, {
             formats,
-            from
+            chat: from
         });
 
     } catch (e) {
         console.error(e);
-        reply("❌ Error");
+        reply("❌ Error occurred");
     }
 });
 
-// ================= ONE GLOBAL LISTENER =================
+// ================= GLOBAL LISTENER =================
 module.exports = (conn) => {
     conn.ev.on("messages.upsert", async ({ messages }) => {
         try {
@@ -89,44 +108,53 @@ module.exports = (conn) => {
             if (!msg?.message?.extendedTextMessage) return;
 
             const ctx = msg.message.extendedTextMessage.contextInfo;
-            const replyTo = ctx?.stanzaId;
-            if (!replyCache.has(replyTo)) return;
+            const repliedId = ctx?.stanzaId;
+            if (!pendingReplies.has(repliedId)) return;
 
             const text = msg.message.extendedTextMessage.text.trim();
-            const { formats, from } = replyCache.get(replyTo);
+            const { formats, chat } = pendingReplies.get(repliedId);
 
-            let res, doc = false;
-            if (text === "1.1") res = "240p";
-            else if (text === "1.2") res = "360p";
-            else if (text === "1.3") res = "480p";
-            else if (text === "1.4") res = "720p";
-            else if (text === "2.1") res = "240p", doc = true;
-            else if (text === "2.2") res = "360p", doc = true;
-            else if (text === "2.3") res = "480p", doc = true;
-            else if (text === "2.4") res = "720p", doc = true;
+            let quality, isDoc = false;
+
+            if (text === "1.1") quality = "240p";
+            else if (text === "1.2") quality = "360p";
+            else if (text === "1.3") quality = "480p";
+            else if (text === "1.4") quality = "720p";
+            else if (text === "2.1") quality = "240p", isDoc = true;
+            else if (text === "2.2") quality = "360p", isDoc = true;
+            else if (text === "2.3") quality = "480p", isDoc = true;
+            else if (text === "2.4") quality = "720p", isDoc = true;
             else return;
 
-            replyCache.delete(replyTo);
+            pendingReplies.delete(repliedId);
 
-            await conn.sendMessage(from, { react: { text: "⬇️", key: msg.key } });
+            await conn.sendMessage(chat, { react: { text: "⬇️", key: msg.key } });
 
-            const { data } = await axios.get(formats[res]);
+            const { data } = await axios.get(formats[quality]);
             const url = data?.result?.downloadUrl || data?.result?.download;
             if (!url) return;
 
-            await conn.sendMessage(from, { react: { text: "⬆️", key: msg.key } });
+            await conn.sendMessage(chat, { react: { text: "⬆️", key: msg.key } });
 
-            await conn.sendMessage(from,
-                doc
-                    ? { document: { url }, mimetype: "video/mp4", fileName: "video.mp4" }
-                    : { video: { url }, mimetype: "video/mp4" },
+            await conn.sendMessage(
+                chat,
+                isDoc
+                    ? {
+                          document: { url },
+                          mimetype: "video/mp4",
+                          fileName: "video.mp4"
+                      }
+                    : {
+                          video: { url },
+                          mimetype: "video/mp4"
+                      },
                 { quoted: msg }
             );
 
-            await conn.sendMessage(from, { react: { text: "✔️", key: msg.key } });
+            await conn.sendMessage(chat, { react: { text: "✔️", key: msg.key } });
 
-        } catch (e) {
-            console.error("Listener error:", e);
+        } catch (err) {
+            console.error("Listener Error:", err);
         }
     });
 };
