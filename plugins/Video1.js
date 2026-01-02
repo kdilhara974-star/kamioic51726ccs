@@ -2,23 +2,22 @@ const { cmd } = require('../command');
 const yts = require('yt-search');
 const axios = require('axios');
 
+// store active menu messages
+const videoMenu = new Map();
 
 cmd({
     pattern: "video1",
     react: "🎬",
     desc: "Download YouTube MP4",
     category: "download",
-    use: ".video <query>",
+    use: ".video1 <query>",
     filename: __filename
 }, async (conn, mek, m, { from, reply, q }) => {
     try {
         if (!q) return reply("❓ *Please provide a video name or link!*");
 
-        const yts = (await import("yt-search")).default;
-        const axios = (await import("axios")).default;
-
         const search = await yts(q);
-        if (!search.videos.length) return reply("❌ No results found for your query.");
+        if (!search.videos.length) return reply("❌ No results found.");
 
         const data = search.videos[0];
         const ytUrl = data.url;
@@ -31,92 +30,113 @@ cmd({
         };
 
         const caption = `
-🎥 *Video Downloader.* 📥
+🎥 *Video Downloader* 📥
 
-📑 *Title:* ${data.title}
+📌 *Title:* ${data.title}
 ⏱️ *Duration:* ${data.timestamp}
-📆 *Uploaded:* ${data.ago}
-📊 *Views:* ${data.views}
-🔗 *Link:* ${data.url}
+👁️ *Views:* ${data.views}
 
-🔢 *Reply Below Number*
+🔢 *Reply with number*
 
-🎥 *Video Types*
-🔹 1.1 240p (Video)
-🔹 1.2 360p (Video)
-🔹 1.3 480p (Video)
-🔹 1.4 720p (Video)
+🎬 *Video*
+1.1 240p
+1.2 360p
+1.3 480p
+1.4 720p
 
-📁 *Document Types*
-🔹 2.1 240p (Document)
-🔹 2.2 360p (Document)
-🔹 2.3 480p (Document)
-🔹 2.4 720p (Document)
+📁 *Document*
+2.1 240p
+2.2 360p
+2.3 480p
+2.4 720p
 
-> © Powerd by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
+> © 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
 
-        const sentMsg = await conn.sendMessage(from, {
+        const sent = await conn.sendMessage(from, {
             image: { url: data.thumbnail },
             caption
         }, { quoted: m });
 
-        const messageID = sentMsg.key.id;
-
-        // Listen for user replies
-        conn.ev.on("messages.upsert", async (msgData) => {
-            const receivedMsg = msgData.messages[0];
-            if (!receivedMsg?.message) return;
-
-            const receivedText = receivedMsg.message.conversation || receivedMsg.message.extendedTextMessage?.text;
-            const senderID = receivedMsg.key.remoteJid;
-            const isReplyToBot = receivedMsg.message.extendedTextMessage?.contextInfo?.stanzaId === messageID;
-
-            if (isReplyToBot) {
-                await conn.sendMessage(senderID, { react: { text: '⏳', key: receivedMsg.key } });
-
-                let selectedFormat, isDocument = false;
-
-                switch (receivedText.trim().toUpperCase()) {
-                    case "1.1": selectedFormat = "240p"; break;
-                    case "1.2": selectedFormat = "360p"; break;
-                    case "1.3": selectedFormat = "480p"; break;
-                    case "1.4": selectedFormat = "720p"; break;
-
-                    case "2.1": selectedFormat = "240p"; isDocument = true; break;
-                    case "2.2": selectedFormat = "360p"; isDocument = true; break;
-                    case "2.3": selectedFormat = "480p"; isDocument = true; break;
-                    case "2.4": selectedFormat = "720p"; isDocument = true; break;
-
-                    default:
-                        return reply("❌ Invalid option! Please reply with 1.1-1.4 or 2.1-2.4.");
-                }
-
-                const { data: apiRes } = await axios.get(formats[selectedFormat]);
-
-                if (!apiRes?.success || !apiRes.result?.downloadUrl) {
-                    return reply(`❌ Unable to download the ${selectedFormat} version. Try another one!`);
-                }
-
-                const result = apiRes.result;
-
-                if (isDocument) {
-                    await conn.sendMessage(senderID, {
-                        document: { url: result.downloadUrl },
-                        mimetype: "video/mp4",
-                        fileName: `${result.title}.mp4`
-                    }, { quoted: receivedMsg });
-                } else {
-                    await conn.sendMessage(senderID, {
-                        video: { url: result.downloadUrl },
-                        mimetype: "video/mp4",
-                        ptt:false,
-                    }, { quoted: receivedMsg });
-                }
-            }
+        videoMenu.set(sent.key.id, {
+            from,
+            formats
         });
 
-    } catch (error) {
-        console.error("Video Command Error:", error);
-        reply("❌ An error occurred while processing your request. Please try again later.");
+    } catch (e) {
+        console.error(e);
+        reply("❌ Error occurred.");
     }
 });
+
+// ONE GLOBAL LISTENER (IMPORTANT)
+cmd.onMessage = async (conn, msg) => {
+    try {
+        const m = msg.messages?.[0];
+        if (!m?.message) return;
+
+        const text =
+            m.message.conversation ||
+            m.message.extendedTextMessage?.text;
+
+        const ctx = m.message.extendedTextMessage?.contextInfo;
+        if (!ctx?.stanzaId) return;
+
+        const menu = videoMenu.get(ctx.stanzaId);
+        if (!menu) return;
+
+        const sender = m.key.remoteJid;
+
+        let quality;
+        let isDoc = false;
+
+        switch (text.trim()) {
+            case "1.1": quality = "240p"; break;
+            case "1.2": quality = "360p"; break;
+            case "1.3": quality = "480p"; break;
+            case "1.4": quality = "720p"; break;
+
+            case "2.1": quality = "240p"; isDoc = true; break;
+            case "2.2": quality = "360p"; isDoc = true; break;
+            case "2.3": quality = "480p"; isDoc = true; break;
+            case "2.4": quality = "720p"; isDoc = true; break;
+
+            default: return;
+        }
+
+        // ⬇️ Download react
+        await conn.sendMessage(sender, {
+            react: { text: '⬇️', key: m.key }
+        });
+
+        const { data } = await axios.get(menu.formats[quality]);
+        if (!data?.success) return;
+
+        // ⬆️ Upload react
+        await conn.sendMessage(sender, {
+            react: { text: '⬆️', key: m.key }
+        });
+
+        if (isDoc) {
+            await conn.sendMessage(sender, {
+                document: { url: data.result.downloadUrl },
+                mimetype: "video/mp4",
+                fileName: `${data.result.title}.mp4`
+            }, { quoted: m });
+        } else {
+            await conn.sendMessage(sender, {
+                video: { url: data.result.downloadUrl },
+                mimetype: "video/mp4"
+            }, { quoted: m });
+        }
+
+        // ✔️ Done react
+        await conn.sendMessage(sender, {
+            react: { text: '✔️', key: m.key }
+        });
+
+        videoMenu.delete(ctx.stanzaId);
+
+    } catch (e) {
+        console.error(e);
+    }
+};
