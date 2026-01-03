@@ -48,7 +48,7 @@ cmd({
     const media = data.data[0];
 
     const caption = `
-    📽️ *RANUMITHA-X-MD INSTAGRAM DOWNLOADER* 📽️
+📽️ *RANUMITHA-X-MD INSTAGRAM DOWNLOADER* 📽️
 
 📑 *File type:* ${media.type.toUpperCase()}
 🔗 *Link:* ${q}
