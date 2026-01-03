@@ -1,44 +1,64 @@
 const axios = require("axios");
 const { cmd } = require("../command");
 
+// Fake ChatGPT vCard
+const fakevCard = {
+    key: {
+        fromMe: false,
+        participant: "0@s.whatsapp.net",
+        remoteJid: "status@broadcast"
+    },
+    message: {
+        contactMessage: {
+            displayName: "© Mr Hiruka",
+            vcard: `BEGIN:VCARD
+VERSION:3.0
+FN:Meta
+ORG:META AI;
+TEL;type=CELL;type=VOICE;waid=94762095304:+94762095304
+END:VCARD`
+        }
+    }
+};
+
+
 cmd({
-  pattern: "instagram",
-  alias: ["insta", "ig"],
-  react: "📸",
+  pattern: "ig",
+  alias: ["insta", "instagram"],
+  react: "📽️",
   desc: "Download Instagram videos & audio",
   category: "download",
   filename: __filename
 }, async (conn, m, store, { from, q, reply }) => {
   try {
     if (!q || !q.startsWith("http")) {
-      return reply("❌ Please provide a valid Instagram link");
+      return reply("*❌ Please provide a valid Instagram link*");
     }
 
     // ⏳ Processing react
-    await conn.sendMessage(from, { react: { text: "⏳", key: m.key } });
+    await conn.sendMessage(from, { react: { text: "📽️", key: m.key } });
 
     const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/igdl?url=${encodeURIComponent(q)}`;
     const { data } = await axios.get(apiUrl);
 
     if (!data?.status || !data.data?.length) {
-      return reply("❌ Failed to fetch Instagram media");
+      return reply("*❌ Failed to fetch Instagram media*");
     }
 
     const media = data.data[0];
 
     const caption = `
-📥 *INSTAGRAM DOWNLOADER*
+    📽️ *RANUMITHA-X-MD INSTAGRAM DOWNLOADER* 📽️
 
-🗂️ *Type:* ${media.type.toUpperCase()}
+📑 *File type:* ${media.type.toUpperCase()}
 🔗 *Link:* ${q}
 
-🔢 *Reply Number*
+💬 *Reply with your choice:*
 
-1️⃣ Video (HD)
-2️⃣ Audio (MP3)
+ 1️⃣ Video Type 🎥
+ 2️⃣ Audio only 🎶
 
-© Powered by RANUMITHA-X-MD 🌛
-`;
+> © Powered by 𝗥𝗔𝗡𝗨𝗠𝗜𝗧𝗛𝗔-𝗫-𝗠𝗗 🌛`;
 
     const sentMsg = await conn.sendMessage(
       from,
@@ -46,7 +66,7 @@ cmd({
         image: { url: media.thumbnail },
         caption
       },
-      { quoted: m }
+      { quoted: fakevCard }
     );
 
     const messageID = sentMsg.key.id;
@@ -71,7 +91,7 @@ cmd({
       switch (text.trim()) {
         case "1":
           if (media.type !== "video") {
-            return reply("❌ No video found in this post");
+            return reply("*❌ No video found in this post*");
           }
 
           // ⬆️ Upload react
@@ -102,7 +122,7 @@ cmd({
           break;
 
         default:
-          return reply("❌ Invalid option");
+          return reply("*❌ Invalid option*");
       }
 
       // ✔️ Done react
@@ -110,7 +130,7 @@ cmd({
     });
 
   } catch (e) {
-    console.log("Instagram Error:", e);
-    reply("❌ Error occurred");
+    console.log("Instagram Plugin Error:", e);
+    reply("*Error*");
   }
 });
