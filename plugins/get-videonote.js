@@ -7,79 +7,73 @@ const ffmpeg = require("fluent-ffmpeg");
 cmd({
   pattern: "getvnote",
   alias: ["gvn"],
-  desc: "Convert replied video/audio or URL to WhatsApp Voice Note",
+  desc: "Convert replied video or URL to WhatsApp Video Note",
   category: "owner",
   react: "🎥",
-  use: ".gv <reply/video/audio/url>",
+  use: ".gvn <reply video | video url>",
   filename: __filename,
 }, async (conn, mek, m, { from, reply, q }) => {
   try {
     let mediaBuffer;
 
-    // -------- IF USER REPLIED TO VIDEO / AUDIO -----------
+    // -------- REPLIED VIDEO ----------
     if (m.quoted) {
-      let type = m.quoted.mtype;
-
-      if (type === "videoMessage" || type === "audioMessage") {
-        mediaBuffer = await m.quoted.download();
-      } else {
-        return reply("⚠️ *Please reply to a video or audio!*");
+      if (m.quoted.mtype !== "videoMessage") {
+        return reply("⚠️ *Video ekakata reply karanna!*");
       }
+      mediaBuffer = await m.quoted.download();
     }
 
-    // -------- IF PROVIDED AUDIO URL -----------------------
+    // -------- VIDEO URL ----------
     else if (q) {
-      const audioUrl = q.trim();
-      const audioRes = await fetch(audioUrl);
-      if (!audioRes.ok) throw new Error("Invalid audio URL");
-      mediaBuffer = Buffer.from(await audioRes.arrayBuffer());
+      const res = await fetch(q);
+      if (!res.ok) throw new Error("Invalid video URL");
+      mediaBuffer = Buffer.from(await res.arrayBuffer());
     } 
-    
     else {
-      return reply("⚠️ *Reply to a video/audio or give me a URL!*");
+      return reply("⚠️ *Video ekakata reply karanna naththang URL ekak denna!*");
     }
 
-    // Reaction: Downloading
     await conn.sendMessage(from, { react: { text: "⬇️", key: mek.key } });
 
-    const tempPath = path.join(__dirname, `../temp/${Date.now()}.mp4`);
-    const voicePath = path.join(__dirname, `../temp/${Date.now()}.opus`);
+    const inputPath = path.join(__dirname, `../temp/${Date.now()}.mp4`);
+    const outputPath = path.join(__dirname, `../temp/${Date.now()}_ptv.mp4`);
 
-    fs.writeFileSync(tempPath, mediaBuffer);
+    fs.writeFileSync(inputPath, mediaBuffer);
 
-    // Reaction: Converting
-    await conn.sendMessage(from, { react: { text: "⬆️", key: mek.key } });
+    await conn.sendMessage(from, { react: { text: "⚙️", key: mek.key } });
 
-    // -------- CONVERT TO VOICE NOTE (OPUS) ----------------
+    // -------- CONVERT TO VIDEO NOTE FORMAT --------
     await new Promise((resolve, reject) => {
-      ffmpeg(tempPath)
-        .audioCodec("libopus")
-        .format("opus")
-        .audioBitrate("64k")
+      ffmpeg(inputPath)
+        .outputOptions([
+          "-vf crop='min(iw,ih):min(iw,ih)'", // square
+          "-c:v libx264",
+          "-preset veryfast",
+          "-movflags +faststart",
+          "-pix_fmt yuv420p"
+        ])
         .on("end", resolve)
         .on("error", reject)
-        .save(voicePath);
+        .save(outputPath);
     });
 
-    const voiceBuffer = fs.readFileSync(voicePath);
+    const videoBuffer = fs.readFileSync(outputPath);
 
-    // SEND WHATSAPP VOICE NOTE
+    // -------- SEND VIDEO NOTE --------
     await conn.sendMessage(from, {
-      audio: voiceBuffer,
+      video: videoBuffer,
       mimetype: "video/mp4",
-      ptv: true,
-    });
+      ptv: true, // 👈 Video Note
+    }, { quoted: mek });
 
-    // Reaction: Done
     await conn.sendMessage(from, { react: { text: "✔️", key: mek.key } });
 
-    // Cleanup
-    fs.unlinkSync(tempPath);
-    fs.unlinkSync(voicePath);
+    fs.unlinkSync(inputPath);
+    fs.unlinkSync(outputPath);
 
-  } catch (err) {
-    console.error(err);
-    await conn.sendMessage(from, { react: { text: "🎤", key: mek.key } });
-    reply("*Error*");
+  } catch (e) {
+    console.error(e);
+    reply("*❌ Video Note create karanna bari una!*");
   }
 });
