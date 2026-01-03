@@ -1,10 +1,15 @@
 const axios = require("axios");
 const { cmd } = require('../command');
 
+// 🔐 Global session store (menuId -> media + chat)
+global.activeIGMenus = global.activeIGMenus || new Map();
+
+/* ================= IG COMMAND ================= */
+
 cmd({
   pattern: "ig",
-  alias: ["insta","instagram"],
-  desc: "Instagram Downloader (Stable)",
+  alias: ["insta", "instagram"],
+  desc: "Instagram Downloader (Full Fixed)",
   category: "download",
   filename: __filename
 }, async (conn, m, store, { from, q, reply }) => {
@@ -13,7 +18,7 @@ cmd({
       return reply("❌ Valid Instagram link ekak denna");
     }
 
-    // ⏳ Fetching react
+    // ⏳ Fetching
     await conn.sendMessage(from, {
       react: { text: "⏳", key: m.key }
     });
@@ -25,8 +30,8 @@ cmd({
         { timeout: 15000 }
       );
       data = res.data;
-    } catch (e) {
-      // 🔁 retry once
+    } catch {
+      // retry once
       const res = await axios.get(
         `https://api-aswin-sparky.koyeb.app/api/downloader/igdl?url=${encodeURIComponent(q)}`,
         { timeout: 15000 }
@@ -35,12 +40,12 @@ cmd({
     }
 
     if (!data?.status || !data.data?.length) {
-      return reply("⚠️ Media load venne naha. Tikak passe try karanna.");
+      return reply("⚠️ Media load wenne naha. Passe try karanna.");
     }
 
     const media = data.data[0];
 
-    // ✅ fetched
+    // 📽️ Ready
     await conn.sendMessage(from, {
       react: { text: "📽️", key: m.key }
     });
@@ -54,60 +59,81 @@ cmd({
 2️⃣ Audio (MP3)
 
 Reply with number 👇
+> Unlimited requests allowed
       `
     }, { quoted: m });
 
-    const menuId = menuMsg.key.id;
-
-    conn.ev.on("messages.upsert", async ({ messages }) => {
-      const msg = messages[0];
-      if (!msg?.message) return;
-
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text;
-
-      const isReply =
-        msg.message.extendedTextMessage?.contextInfo?.stanzaId === menuId;
-
-      if (!isReply) return;
-
-      // ⬇️ Downloading
-      await conn.sendMessage(from, {
-        react: { text: "⬇️", key: msg.key }
-      });
-
-      await new Promise(r => setTimeout(r, 600));
-
-      // ⬆️ Uploading
-      await conn.sendMessage(from, {
-        react: { text: "⬆️", key: msg.key }
-      });
-
-      if (text.trim() === "1" && media.type === "video") {
-        await conn.sendMessage(from, {
-          video: { url: media.url },
-          caption: "✅ Video Ready"
-        }, { quoted: msg });
-
-      } else if (text.trim() === "2") {
-        await conn.sendMessage(from, {
-          audio: { url: media.url },
-          mimetype: "audio/mp4"
-        }, { quoted: msg });
-
-      } else {
-        return reply("❌ Wrong option");
-      }
-
-      // ✔️ Done
-      await conn.sendMessage(from, {
-        react: { text: "✔️", key: msg.key }
-      });
+    // 🔐 Save session
+    global.activeIGMenus.set(menuMsg.key.id, {
+      media,
+      from
     });
 
+    // 🧹 Auto clear after 10 minutes
+    setTimeout(() => {
+      global.activeIGMenus.delete(menuMsg.key.id);
+    }, 10 * 60 * 1000);
+
   } catch (err) {
-    console.error(err);
-    reply("❌ Unexpected error. Later try karanna.");
+    console.error("IG CMD ERROR:", err);
+    reply("❌ Unexpected error");
+  }
+});
+
+/* ================= ONE GLOBAL LISTENER ================= */
+
+cmd({
+  on: "body"
+}, async (conn, m) => {
+  try {
+    if (!m.message?.extendedTextMessage) return;
+
+    const text = m.message.extendedTextMessage.text;
+    const ctx = m.message.extendedTextMessage.contextInfo;
+    if (!ctx?.stanzaId) return;
+
+    const session = global.activeIGMenus.get(ctx.stanzaId);
+    if (!session) return;
+
+    const { media, from } = session;
+
+    // ⬇️ Downloading
+    await conn.sendMessage(from, {
+      react: { text: "⬇️", key: m.key }
+    });
+
+    await new Promise(r => setTimeout(r, 600));
+
+    // ⬆️ Uploading
+    await conn.sendMessage(from, {
+      react: { text: "⬆️", key: m.key }
+    });
+
+    if (text.trim() === "1") {
+      if (media.type !== "video") return;
+
+      await conn.sendMessage(from, {
+        video: { url: media.url },
+        caption: "✅ Video Ready"
+      }, { quoted: m });
+
+    } else if (text.trim() === "2") {
+
+      await conn.sendMessage(from, {
+        audio: { url: media.url },
+        mimetype: "audio/mp4"
+      }, { quoted: m });
+
+    } else {
+      return;
+    }
+
+    // ✔️ Sent
+    await conn.sendMessage(from, {
+      react: { text: "✔️", key: m.key }
+    });
+
+  } catch (e) {
+    console.error("IG LISTENER ERROR:", e);
   }
 });
