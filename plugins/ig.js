@@ -14,7 +14,7 @@ cmd({
       return conn.sendMessage(from, { text: "*❌ Please provide a valid Instagram URL*" }, { quoted: m });
     }
 
-    await conn.sendMessage(from, { react: { text: '⏳', key: m.key } });
+    await conn.sendMessage(from, { react: { text: '📽️', key: m.key } });
 
     const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/igdl?url=${encodeURIComponent(q)}`;
     const response = await axios.get(apiUrl);
