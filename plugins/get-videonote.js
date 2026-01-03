@@ -25,7 +25,7 @@ cmd({
 
     fs.writeFileSync(input, buffer);
 
-    await conn.sendMessage(from, { react: { text: "🔄", key: mek.key } });
+    await conn.sendMessage(from, { react: { text: "⬆️", key: mek.key } });
 
     await new Promise((res, rej) => {
       ffmpeg(input)
@@ -52,7 +52,7 @@ cmd({
     await conn.sendMessage(from, {
       video: final,
       mimetype: "video/mp4",
-      ptt: true,
+      ptv: true,
       videoNote: true, // 👈 VERY IMPORTANT
     }, { quoted: mek });
 
