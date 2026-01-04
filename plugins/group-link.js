@@ -26,7 +26,7 @@ cmd({
         const groupAdmins = groupMetadata ? groupMetadata.participants.filter(member => member.admin) : [];
         const isBotAdmins = isGroup ? groupAdmins.some(admin => admin.id === botNumber + '@s.whatsapp.net') : false;
         
-        if (!isBotAdmins) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
+        if (!isOwner) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
 
         // Check if the sender is an admin
         const isAdmins = isGroup ? groupAdmins.some(admin => admin.id === sender) : false;
