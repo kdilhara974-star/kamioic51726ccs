@@ -12,7 +12,7 @@ cmd({
     desc: "Get group invite link.",
     category: "group", // Already group
     filename: __filename,
-}, async (conn, mek, m, { from, quoted, body, args, q, isGroup, isOwner, sender, reply }) => {
+}, async (conn, mek, m, { from, quoted, body, args, q, isGroup, sender, reply }) => {
     try {
         // Ensure this is being used in a group
         if (!isGroup) return reply("𝐓𝐡𝐢𝐬 𝐅𝐞𝐚𝐭𝐮𝐫𝐞 𝐈𝐬 𝐎𝐧𝐥𝐲 𝐅𝐨𝐫 𝐆𝐫𝐨𝐮𝐩❗");
@@ -26,11 +26,11 @@ cmd({
         const groupAdmins = groupMetadata ? groupMetadata.participants.filter(member => member.admin) : [];
         const isBotAdmins = isGroup ? groupAdmins.some(admin => admin.id === botNumber + '@s.whatsapp.net') : false;
         
-        if (!isOwner) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
+        if (!isBotAdmins) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
 
         // Check if the sender is an admin
         const isAdmins = isGroup ? groupAdmins.some(admin => admin.id === sender) : false;
-        if (!isOwner) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
+        if (!isAdmins) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
 
         // Get the invite code and generate the link
         const inviteCode = await conn.groupInviteCode(from);
