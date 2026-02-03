@@ -205,7 +205,7 @@ cmd(
             fs.unlinkSync(voicePath);
 
           } else {
-            await reply("❌ Invalid reply! Send only 1, 2, or 3.");
+            await reply("*❌ Invalid number!*");
             return;
           }
 
@@ -229,12 +229,7 @@ cmd(
         }
       };
 
-      conn.ev.on("messages.upsert", handler);
-
-      setTimeout(() => {
-        conn.ev.off("messages.upsert", handler);
-      }, 120000);
-
+      
     } catch (err) {
       console.error(err);
       reply("⚠️ An error occurred while processing the request.");
