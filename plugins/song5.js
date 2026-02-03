@@ -27,8 +27,8 @@ END:VCARD`,
 // Command
 cmd(
   {
-    pattern: "song5",
-    alias: ["play5"],
+    pattern: "song4",
+    alias: ["play4"],
     react: "🎵",
     desc: "Download YouTube song (Audio) via Nekolabs API",
     category: "download",
@@ -62,7 +62,7 @@ cmd(
 
       // API
       const apiUrl = `https://ominisave.vercel.app/api/ytmp3?url=${encodeURIComponent(
-        query
+        ytUrl
       )}`;
       const res = await fetch(apiUrl);
       const data = await res.json();
