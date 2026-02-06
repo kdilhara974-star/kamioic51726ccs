@@ -1,120 +1,160 @@
 const axios = require("axios");
-const { cmd } = require('../command');
+const { cmd } = require("../command");
 
-cmd({
-  pattern: "tiktok",
-  alias: ["tt"],
-  desc: "Download TikTok videos",
-  category: "download",
-  filename: __filename
-}, async (conn, m, store, { from, quoted, q, reply }) => {
-  try {
-    if (!q || !q.startsWith("https://")) {
-      return conn.sendMessage(from, { text: "❌ Please provide a valid TikTok URL." }, { quoted: m });
-    }
+// Fake vCard (optional – song2 vage)
+const fakevCard = {
+  key: {
+    fromMe: false,
+    participant: "0@s.whatsapp.net",
+    remoteJid: "status@broadcast",
+  },
+  message: {
+    contactMessage: {
+      displayName: "© Mr Hiruka",
+      vcard: `BEGIN:VCARD
+VERSION:3.0
+FN:Meta
+ORG:META AI;
+TEL;type=CELL;type=VOICE;waid=94762095304:+94762095304
+END:VCARD`,
+    },
+  },
+};
 
-    // ⏳ processing
-    await conn.sendMessage(from, { react: { text: '⏳', key: m.key } });
+cmd(
+  {
+    pattern: "tiktok",
+    alias: ["tt"],
+    react: "🎬",
+    desc: "Download TikTok videos",
+    category: "download",
+    use: ".tiktok <url>",
+    filename: __filename,
+  },
 
-    // ⬇️ download start
-    await conn.sendMessage(from, { react: { text: '⬇️', key: m.key } });
+  async (conn, mek, m, { from, q, reply }) => {
+    try {
+      if (!q || !q.startsWith("http")) {
+        return reply("❌ Please provide a valid TikTok URL.");
+      }
 
-    const response = await axios.get(
-      `https://api-aswin-sparky.koyeb.app/api/downloader/tiktok?url=${q}`
-    );
+      // React ⏳
+      await conn.sendMessage(from, {
+        react: { text: "⏳", key: mek.key },
+      });
 
-    const data = response.data;
-    if (!data || !data.status) {
-      return reply("⚠️ Failed to retrieve TikTok media.");
-    }
+      // API
+      const { data } = await axios.get(
+        `https://api-aswin-sparky.koyeb.app/api/downloader/tiktok?url=${encodeURIComponent(
+          q
+        )}`
+      );
 
-    const dat = data.data;
+      if (!data?.status || !data?.data) {
+        return reply("⚠️ Failed to fetch TikTok data.");
+      }
 
-    const caption = `
-📺 Tiktok Downloader 📥
+      const dat = data.data;
+
+      const caption = `
+📺 *TIKTOK DOWNLOADER* 📥
 
 📑 *Title:* ${dat.title || "No title"}
-⏱️ *Duration:* ${dat.duration || "N/A"}
-👍 *Likes:* ${dat.view || "0"}
+⏱ *Duration:* ${dat.duration || "N/A"}
+👀 *Views:* ${dat.view || "0"}
 💬 *Comments:* ${dat.comment || "0"}
 🔁 *Shares:* ${dat.share || "0"}
-📥 *Downloads:* ${dat.download || "0"}
 
-🔢 *Reply Below Number*
+🔽 *Reply with number:*
 
-1️⃣ HD Quality
-2️⃣ SD Quality
-3️⃣ Audio (MP3)
+1. *HD Video* 🔋
+2. *SD Video* 📱
+3. *Audio (MP3)* 🎵
 
-> Powered by DARK-KNIGHT-XMD`;
+> © Powered by RANUMITHA-X-MD 🌛`;
 
-    const sentMsg = await conn.sendMessage(from, {
-      image: { url: dat.thumbnail },
-      caption
-    }, { quoted: m });
+      const sentMsg = await conn.sendMessage(
+        from,
+        {
+          image: { url: dat.thumbnail },
+          caption,
+        },
+        { quoted: fakevCard }
+      );
 
-    const messageID = sentMsg.key.id;
+      const messageID = sentMsg.key.id;
 
-    conn.ev.on("messages.upsert", async (msgData) => {
-      const receivedMsg = msgData.messages[0];
-      if (!receivedMsg?.message) return;
+      // 🔁 Reply listener
+      const handler = async (msgUpdate) => {
+        try {
+          const mekInfo = msgUpdate.messages[0];
+          if (!mekInfo?.message) return;
 
-      const receivedText =
-        receivedMsg.message.conversation ||
-        receivedMsg.message.extendedTextMessage?.text;
+          const text =
+            mekInfo.message.conversation ||
+            mekInfo.message.extendedTextMessage?.text;
 
-      const senderID = receivedMsg.key.remoteJid;
-      const isReplyToBot =
-        receivedMsg.message.extendedTextMessage?.contextInfo?.stanzaId === messageID;
+          const isReply =
+            mekInfo.message.extendedTextMessage?.contextInfo?.stanzaId ===
+            messageID;
 
-      if (!isReplyToBot) return;
+          if (!isReply) return;
 
-      const react = async (emoji) => {
-        await conn.sendMessage(senderID, {
-          react: { text: emoji, key: receivedMsg.key }
-        });
+          // React ⬇️
+          await conn.sendMessage(from, {
+            react: { text: "⬇️", key: mekInfo.key },
+          });
+
+          const choice = text.trim();
+
+          let sendType;
+
+          if (choice === "1") {
+            // HD
+            sendType = {
+              video: { url: dat.video },
+              caption: "📥 *Downloaded HD Quality*",
+            };
+          } else if (choice === "2") {
+            // SD (fallback → HD)
+            sendType = {
+              video: { url: dat.sd_video || dat.video },
+              caption: "📥 *Downloaded SD Quality*",
+            };
+          } else if (choice === "3") {
+            // Audio
+            sendType = {
+              audio: { url: dat.audio },
+              mimetype: "audio/mpeg",
+              ptt: false,
+            };
+          } else {
+            return reply("❌ Invalid option! Reply only 1, 2 or 3.");
+          }
+
+          // React ⬆️
+          await conn.sendMessage(from, {
+            react: { text: "⬆️", key: mekInfo.key },
+          });
+
+          await conn.sendMessage(from, sendType, { quoted: mekInfo });
+
+          // React ✔️
+          await conn.sendMessage(from, {
+            react: { text: "✔️", key: mekInfo.key },
+          });
+
+          // 🧹 listener remove (VERY IMPORTANT)
+          conn.ev.off("messages.upsert", handler);
+        } catch (e) {
+          console.error("TT reply error:", e);
+        }
       };
 
-      switch (receivedText.trim()) {
-        case "1":
-          await react("⬇️"); // download
-          await react("⬆️"); // upload
-          await conn.sendMessage(senderID, {
-            video: { url: dat.video },
-            caption: "📥 Downloaded HD Quality"
-          }, { quoted: receivedMsg });
-          await react("✔️"); // done
-          break;
-
-        case "2":
-          await react("⬇️");
-          await react("⬆️");
-          const sdUrl = dat.sd_video || dat.video;
-          await conn.sendMessage(senderID, {
-            video: { url: sdUrl },
-            caption: "📥 Downloaded SD Quality"
-          }, { quoted: receivedMsg });
-          await react("✔️");
-          break;
-
-        case "3":
-          await react("⬇️");
-          await react("⬆️");
-          await conn.sendMessage(senderID, {
-            audio: { url: dat.audio },
-            mimetype: "audio/mp3",
-            ptt: false
-          }, { quoted: receivedMsg });
-          await react("✔️");
-          break;
-
-        default:
-          reply("❌ Reply with 1, 2 or 3 only.");
-      }
-    });
-
-  } catch (err) {
-    console.error("TikTok Plugin Error:", err);
-    reply("❌ Error occurred. Try again later.");
+      conn.ev.on("messages.upsert", handler);
+    } catch (err) {
+      console.error("TikTok plugin error:", err);
+      reply("❌ Error while processing TikTok download.");
+    }
   }
-});
+);
