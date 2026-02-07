@@ -23,8 +23,8 @@ END:VCARD`
 
 
 cmd({
-    pattern: "movie",
-    alias: ["mv"],
+    pattern: "movieinfo",
+    alias: ["mvinfo"],
     desc: "Fetch detailed information about a movie.",
     category: "utility",
     react: "🎬",
