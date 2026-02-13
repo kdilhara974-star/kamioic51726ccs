@@ -52,11 +52,11 @@ async (conn, mek, m, { from, args }) => {
         // ❌ If still empty
         if (!userText) {
             return conn.sendMessage(from, {
-                text: "🧠 *Please provide a message for the AI.*
+                text: `🧠 *Please provide a message for the AI.*
 
 📌 Example:
 • .gpt \`Hello world\`
-• Reply to a message and type \`.gpt\`"
+• Reply to a message and type \`.gpt\``
             }, { quoted: mek });
         }
 
