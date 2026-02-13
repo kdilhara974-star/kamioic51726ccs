@@ -10,12 +10,12 @@ const FakeVCard = {
   },
   message: {
     contactMessage: {
-      displayName: "© Mr Hiruka",
+      displayName: "© Mr Hiruka (Copilot Ai) 🔖",
       vcard: `BEGIN:VCARD
 VERSION:3.0
 FN:Meta
 ORG:META AI;
-TEL;type=CELL;type=VOICE;waid=13135550002:+13135550002
+TEL;type=CELL;type=VOICE;waid=18772241042:+18772241042
 END:VCARD`
     }
   }
