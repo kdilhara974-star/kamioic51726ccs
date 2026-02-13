@@ -24,6 +24,7 @@ END:VCARD`
 
 cmd({
     pattern: "gpt",
+    alias: [ "chatgpt", "openai", "ai2" ],
     desc: "Chat with GPT AI",
     category: "ai",
     react: "🤖",
