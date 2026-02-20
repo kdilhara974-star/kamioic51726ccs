@@ -9,7 +9,7 @@
     "restart": "pm2 restart RANUMITHA-X-MD"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "npm:angularsockets",
+    "@whiskeysockets/baileys": "^6.7.21",
     "@adiwajshing/keyed-db": "latest",
     "@dark-yasiya/yt-dl.js": "1.0.5",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
@@ -18,7 +18,7 @@
     "pino": "^9.5.0",
     "pm2": "^6.0.8",
     "util": "^0.12.5",
-    "jimp": "^0.16.1",
+    "jimp": "latest",
     "express": "latest",
     "moment-timezone": "^0.6.0",
     "axios": "^1.10.0",
